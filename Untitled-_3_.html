@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#15251d">
+<title>Pipino Food Hub</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f5f6ef;--card:#fff;--text:#202b23;--muted:#6c786e;--green:#28784c;--dark:#15251d;--border:#e1e7dd;--accent:#e8f4e9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif}
+header{background:var(--dark);color:white;padding:22px 5%;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.logo{font-size:25px;font-weight:900}.logo span{color:#86dc9c}
+header p{color:#bdcbbf;font-size:12px;margin:5px 0 0}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.btn{border:0;border-radius:11px;padding:11px 15px;font-weight:700}
+.primary{background:var(--green);color:white}
+.secondary{background:var(--accent);color:var(--green)}
+.darkbtn{background:#26392e;color:white;border:1px solid #526558}
+.hero{padding:38px 5% 25px;max-width:1200px;margin:auto}
+.eyebrow{font-size:12px;font-weight:800;color:var(--green);letter-spacing:2px}
+h1{font-size:clamp(30px,5vw,47px);letter-spacing:-2px;line-height:1.1;margin:10px 0}
+.hero p{color:var(--muted);line-height:1.6;max-width:650px}
+.search{display:flex;gap:9px;margin-top:20px;max-width:700px}
+input,select{border:1px solid var(--border);border-radius:11px;padding:12px;background:white;color:var(--text);min-width:0}
+.search input{flex:1}
+main{max-width:1200px;margin:auto;padding:0 5% 50px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0 20px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters select{font-size:13px;padding:10px}
+#count{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.recipe{background:white;border:1px solid var(--border);border-radius:17px;overflow:hidden;display:flex;flex-direction:column}
+.cardtop{display:flex;align-items:center;justify-content:space-between;padding:16px 17px 8px;gap:8px}
+.emoji{font-size:34px}
+.tag{font-size:11px;font-weight:800;background:var(--accent);color:var(--green);padding:6px 9px;border-radius:20px}
+.heart{background:white;border:1px solid var(--border);border-radius:50%;width:36px;height:36px;font-size:18px}
+.heart.active{color:#d83d59}
+.cardbody{padding:0 17px 17px;display:flex;flex-direction:column;flex:1}
+.cardbody h3{margin:8px 0;font-size:18px}
+.cardbody p{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 12px}
+.meta{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;padding:10px 0;margin-top:auto}
+.bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:12px}
+.price{font-weight:800;color:var(--green);font-size:13px}
+.empty{grid-column:1/-1;text-align:center;background:white;border-radius:15px;padding:30px;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}
+.overlay{display:none;position:fixed;inset:0;background:#101a14b8;z-index:5;align-items:center;justify-content:center;padding:14px}
+.overlay.open{display:flex}
+.modal{background:white;border-radius:18px;padding:23px;width:100%;max-width:600px;max-height:90vh;overflow:auto}
+.modalhead{display:flex;justify-content:space-between;gap:12px}
+.modal h2{margin:5px 0 10px}
+.modal li{padding:5px 0;line-height:1.5}
+.modal p{line-height:1.6;color:var(--muted)}
+.close{border:0;border-radius:9px;padding:8px 12px;background:#edf0e9;align-self:start}
+.authbox{background:white;border:1px solid var(--border);border-radius:15px;padding:17px;margin:0 0 20px;display:none}
+.authbox.open{display:block}
+.authform{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.authform input{flex:1;min-width:170px}
+#authMessage{font-size:13px;color:var(--muted);line-height:1.5}
+.accountrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.grid{grid-template-columns:1fr}.search{flex-direction:column}.filters{width:100%}.filters select{flex:1}header{padding:18px 5%}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">🥒 Pipino <span>Food Hub</span></div>
+    <p>Receitas reais. Preços acessíveis. Sem variações artificiais.</p>
+  </div>
+  <div class="accountrow">
+    <span id="accountStatus" class="small" style="color:#d6e5d8">A verificar conta...</span>
+    <button id="accountButton" class="btn darkbtn">Entrar / Criar conta</button>
+    <button id="logoutButton" class="btn darkbtn" hidden>Sair</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="eyebrow">A TUA COZINHA, AS TUAS REGRAS</div>
+  <h1>Comer bem não tem<br>de custar uma fortuna.</h1>
+  <p>Descobre receitas económicas, pesquisa ingredientes e guarda os teus favoritos na tua conta.</p>
+  <div class="search">
+    <input id="search" type="search" placeholder="🔎 Procurar receitas ou ingredientes..." aria-label="Pesquisar">
+    <button id="searchButton" class="btn primary">Pesquisar</button>
+  </div>
+</section>
+
+<main>
+  <section id="authBox" class="authbox">
+    <h3>👤 A tua conta Pipino</h3>
+    <p class="small">Cria uma conta com email e palavra-passe ou entra numa conta existente.</p>
+    <form id="authForm" class="authform">
+      <input id="email" type="email" autocomplete="email" placeholder="O teu email" required>
+      <input id="password" type="password" autocomplete="current-password" placeholder="Palavra-passe (mín. 6 caracteres)" minlength="6" required>
+      <button class="btn primary" type="submit">Entrar</button>
+      <button class="btn secondary" type="button" id="signupButton">Criar conta</button>
+    </form>
+    <p id="authMessage" aria-live="polite"></p>
+    <p class="small">Se o registo exigir confirmação, verifica o email. Nunca partilhes a tua palavra-passe.</p>
+  </section>
+
+  <div class="toolbar">
+    <div class="filters">
+      <select id="category" aria-label="Categoria">
+        <option value="">Todas as categorias</option>
+        <option>Pequeno-almoço</option><option>Almoço</option>
+        <option>Jantar</option><option>Lanche</option>
+        <option>Sobremesa</option><option>Vegetariano</option>
+      </select>
+      <select id="budget" aria-label="Preço máximo">
+        <option value="999">Qualquer preço</option>
+        <option value="1">Até 1 €</option>
+        <option value="2">Até 2 €</option>
+        <option value="3">Até 3 €</option>
+      </select>
+      <select id="sort" aria-label="Ordenar">
+        <option value="default">Ordem normal</option>
+        <option value="price">Mais baratas</option>
+        <option value="time">Mais rápidas</option>
+        <option value="name">Nome A–Z</option>
+      </select>
+    </div>
+    <div>
+      <button id="favoritesButton" class="btn secondary">♡ Favoritos</button>
+      <div id="count"></div>
+    </div>
+  </div>
+  <div id="recipes" class="grid"></div>
+</main>
+
+<footer>
+  Pipino Food Hub · Os favoritos são sincronizados com Supabase quando tens sessão iniciada.<br>
+  Preços estimados por pessoa; podem variar conforme a loja.
+</footer>
+
+<div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modalhead">
+      <div><div id="modalEmoji" class="emoji"></div><h2 id="modalTitle"></h2><div id="modalMeta" class="meta"></div></div>
+      <button id="closeModal" class="close" aria-label="Fechar">✕</button>
+    </div>
+    <p id="modalDescription"></p>
+    <h3>🧺 Ingredientes</h3><ul id="ingredients"></ul>
+    <h3>👨‍🍳 Preparação</h3><ol id="steps"></ol>
+    <p class="small">Os custos são estimativas, não preços garantidos. Tem cuidado com o fogão e o forno e pede ajuda a um adulto quando necessário.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* CONFIGURAÇÃO DO SUPABASE */
+const SUPABASE_URL = "https://xrjuwtenszmkacokriue.supabase.co";
+const SUPABASE_KEY = "sb_publishable_G21u92dKg927ED-iaKJX2g_SxS2nthm";
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* RECEITAS-BASE DE EXEMPLO.
+   Podes substituir este array pelo catálogo de 30 receitas anterior.
+   Os IDs têm de ser números inteiros e únicos. */
+const recipes = [
+{id:1,name:"Massa com molho de tomate",emoji:"🍝",category:"Almoço",price:1.20,time:20,difficulty:"Fácil",servings:2,description:"Massa simples com tomate, alho e ervas.",ingredients:["180 g de massa","200 g de tomate triturado","1 dente de alho","1 colher de sopa de azeite","Orégãos e sal"],steps:["Coze a massa seguindo as instruções da embalagem.","Pica o alho e aquece-o com azeite numa frigideira.","Junta o tomate e os orégãos e cozinha durante 8–10 minutos.","Escorre a massa, envolve no molho e serve."]},
+{id:2,name:"Arroz de legumes",emoji:"🥕",category:"Almoço",price:1.40,time:30,difficulty:"Fácil",servings:2,description:"Arroz caseiro com cenoura e ervilhas.",ingredients:["150 g de arroz","1 cenoura","100 g de ervilhas","1/2 cebola","Azeite e sal"],steps:["Corta a cenoura e a cebola.","Refoga a cebola com azeite e junta os legumes.","Adiciona o arroz e envolve.","Junta água quente e cozinha até o arroz ficar macio."]},
+{id:3,name:"Omelete de queijo",emoji:"🍳",category:"Jantar",price:1.30,time:10,difficulty:"Fácil",servings:1,description:"Omelete rápida com queijo derretido.",ingredients:["2 ovos","30 g de queijo","1 colher de chá de azeite","Sal e pimenta"],steps:["Bate os ovos e mistura o queijo.","Aquece o azeite numa frigideira.","Deita a mistura e cozinha em lume médio-baixo.","Dobra e termina de cozinhar completamente."]},
+{id:4,name:"Papas de aveia",emoji:"🥣",category:"Pequeno-almoço",price:0.65,time:8,difficulty:"Fácil",servings:1,description:"Aveia quente com leite, banana e canela.",ingredients:["50 g de aveia","200 ml de leite","1/2 banana","Canela"],steps:["Coloca a aveia e o leite num tacho.","Aquece em lume brando, mexendo até engrossar.","Serve com banana às rodelas e canela."]},
+{id:5,name:"Panquecas simples",emoji:"🥞",category:"Pequeno-almoço",price:0.90,time:15,difficulty:"Fácil",servings:2,description:"Panquecas com ingredientes básicos.",ingredients:["1 ovo","100 g de farinha","120 ml de leite","1 colher de chá de fermento"],steps:["Mistura o ovo com o leite.","Adiciona a farinha e o fermento.","Aquece uma frigideira ligeiramente untada.","Cozinha pequenas porções, virando quando surgirem bolhas."]},
+{id:6,name:"Sopa de cenoura",emoji:"🥣",category:"Jantar",price:0.85,time:30,difficulty:"Fácil",servings:4,description:"Sopa cremosa de cenoura e batata.",ingredients:["4 cenouras","2 batatas","1 cebola","Azeite e sal"],steps:["Descasca e corta os legumes.","Coze-os em água até ficarem macios.","Tritura cuidadosamente.","Junta azeite e ajusta a consistência."]},
+{id:7,name:"Salada de grão-de-bico",emoji:"🥗",category:"Vegetariano",price:1.50,time:10,difficulty:"Fácil",servings:2,description:"Salada fresca de grão, tomate e pepino.",ingredients:["1 lata de grão-de-bico","2 tomates","1/2 pepino","Azeite e limão"],steps:["Passa o grão por água e escorre-o.","Corta o tomate e o pepino.","Mistura tudo numa taça.","Tempera com azeite e limão."]},
+{id:8,name:"Batatas assadas",emoji:"🥔",category:"Jantar",price:0.90,time:40,difficulty:"Fácil",servings:2,description:"Batatas douradas com alho e alecrim.",ingredients:["500 g de batatas","Azeite","1 dente de alho","Alecrim e sal"],steps:["Aquece o forno a 200 °C.","Lava e corta as batatas.","Envolve com azeite, alho e alecrim.","Assa durante 30–40 minutos, virando a meio."]},
+{id:9,name:"Tosta de queijo e tomate",emoji:"🥪",category:"Lanche",price:0.80,time:8,difficulty:"Fácil",servings:1,description:"Tosta com queijo derretido e tomate.",ingredients:["2 fatias de pão","2 fatias de queijo","1 tomate","Orégãos"],steps:["Coloca queijo e tomate sobre o pão.","Adiciona orégãos.","Tosta até o queijo derreter."]},
+{id:10,name:"Arroz com ovo",emoji:"🍚",category:"Almoço",price:1.10,time:20,difficulty:"Fácil",servings:1,description:"Arroz simples servido com ovo bem cozinhado.",ingredients:["80 g de arroz","1 ovo","Azeite e sal"],steps:["Coze o arroz em água temperada.","Cozinha o ovo numa frigideira com um pouco de azeite.","Serve o ovo sobre o arroz."]},
+{id:11,name:"Lentilhas estufadas",emoji:"🍲",category:"Vegetariano",price:1.40,time:35,difficulty:"Fácil",servings:3,description:"Lentilhas estufadas com cenoura e tomate.",ingredients:["200 g de lentilhas cozidas","1 cenoura","200 g de tomate","1/2 cebola","Azeite e cominhos"],steps:["Pica a cebola e corta a cenoura.","Refoga a cebola e junta a cenoura.","Adiciona tomate, lentilhas e um pouco de água.","Tempera e cozinha durante 15–20 minutos."]},
+{id:12,name:"Massa com atum",emoji:"🐟",category:"Almoço",price:1.80,time:20,difficulty:"Fácil",servings:2,description:"Massa com atum e molho de tomate.",ingredients:["180 g de massa","1 lata de atum","150 g de tomate triturado","1/2 cebola","Azeite"],steps:["Coze e escorre a massa.","Refoga a cebola com azeite.","Junta o tomate e cozinha alguns minutos.","Adiciona o atum e a massa e envolve."]},
+{id:13,name:"Cuscuz com legumes",emoji:"🥙",category:"Vegetariano",price:1.35,time:15,difficulty:"Fácil",servings:2,description:"Cuscuz leve com legumes salteados.",ingredients:["150 g de cuscuz","1 courgette","1 cenoura","Azeite e sal"],steps:["Prepara o cuscuz segundo a embalagem.","Corta os legumes em pedaços pequenos.","Salteia os legumes em azeite até ficarem tenros.","Solta o cuscuz com um garfo e mistura."]},
+{id:14,name:"Feijão estufado",emoji:"🫘",category:"Jantar",price:1.30,time:25,difficulty:"Fácil",servings:3,description:"Feijão num molho de tomate aromático.",ingredients:["1 lata de feijão cozido","200 g de tomate","1 cebola","1 dente de alho","Azeite e colorau"],steps:["Pica a cebola e o alho.","Refoga-os com azeite.","Junta tomate e colorau e cozinha 5 minutos.","Adiciona o feijão escorrido e cozinha mais 10 minutos."]},
+{id:15,name:"Iogurte com fruta e aveia",emoji:"🍓",category:"Pequeno-almoço",price:0.90,time:5,difficulty:"Fácil",servings:1,description:"Taça de iogurte com fruta fresca e aveia.",ingredients:["1 iogurte natural","1 peça de fruta","30 g de aveia"],steps:["Coloca o iogurte numa taça.","Corta a fruta em pedaços.","Junta a aveia e mistura."]},
+{id:16,name:"Bolo de caneca",emoji:"🍰",category:"Sobremesa",price:0.75,time:5,difficulty:"Fácil",servings:1,description:"Bolo individual preparado no micro-ondas.",ingredients:["4 colheres de sopa de farinha","2 colheres de sopa de açúcar","3 colheres de sopa de leite","1 colher de sopa de óleo","1/4 colher de chá de fermento"],steps:["Mistura os ingredientes numa caneca própria para micro-ondas.","Mexe até não haver grumos.","Aquece em intervalos curtos, verificando a cozedura.","Deixa arrefecer antes de comer."]},
+{id:17,name:"Maçã assada com canela",emoji:"🍎",category:"Sobremesa",price:0.65,time:25,difficulty:"Fácil",servings:2,description:"Sobremesa simples de fruta assada.",ingredients:["2 maçãs","Canela","1 colher de sopa de água"],steps:["Aquece o forno a 180 °C.","Lava as maçãs e coloca-as num recipiente próprio.","Junta a água e a canela.","Assa até ficarem macias."]},
+{id:18,name:"Sandes de ovo",emoji:"🥚",category:"Lanche",price:0.90,time:12,difficulty:"Fácil",servings:1,description:"Sandes recheada com ovo cozido.",ingredients:["2 fatias de pão","1 ovo","1 colher de sopa de iogurte natural","Sal e pimenta"],steps:["Coze o ovo até ficar firme e deixa arrefecer.","Descasca e esmaga-o com um garfo.","Mistura com o iogurte e tempera.","Coloca no pão."]},
+{id:19,name:"Salada de massa",emoji:"🥗",category:"Almoço",price:1.50,time:20,difficulty:"Fácil",servings:2,description:"Salada fria com massa, milho e tomate.",ingredients:["160 g de massa","100 g de milho","2 tomates","Azeite e limão"],steps:["Coze a massa e deixa arrefecer.","Corta o tomate em cubos.","Mistura com o milho e a massa.","Tempera com azeite e limão."]},
+{id:20,name:"Hambúrguer de feijão",emoji:"🍔",category:"Vegetariano",price:1.50,time:25,difficulty:"Médio",servings:2,description:"Hambúrguer caseiro à base de feijão e aveia.",ingredients:["240 g de feijão cozido","40 g de aveia","1/2 cebola","Azeite e especiarias"],steps:["Esmaga o feijão com um garfo.","Mistura com a cebola picada e a aveia.","Forma dois hambúrgueres.","Cozinha numa frigideira até ficarem firmes e quentes no interior."]},
+{id:21,name:"Creme de abóbora",emoji:"🎃",category:"Jantar",price:0.95,time:30,difficulty:"Fácil",servings:4,description:"Creme de abóbora, batata e cebola.",ingredients:["500 g de abóbora","1 batata","1 cebola","Azeite e sal"],steps:["Descasca e corta os legumes.","Coze em água até ficarem macios.","Tritura cuidadosamente.","Junta azeite e ajusta o tempero."]},
+{id:22,name:"Pizza de pão",emoji:"🍕",category:"Lanche",price:1.20,time:12,difficulty:"Fácil",servings:1,description:"Pizza rápida feita sobre pão.",ingredients:["2 fatias de pão","3 colheres de sopa de molho de tomate","40 g de queijo","Orégãos"],steps:["Aquece o forno a 200 °C.","Barra o pão com molho de tomate.","Adiciona queijo e orégãos.","Leva ao forno até o queijo derreter."]},
+{id:23,name:"Batido de banana",emoji:"🍌",category:"Pequeno-almoço",price:0.80,time:5,difficulty:"Fácil",servings:1,description:"Batido simples de banana e leite.",ingredients:["1 banana","250 ml de leite","Canela opcional"],steps:["Descasca e corta a banana.","Tritura com o leite até ficar homogéneo.","Adiciona canela se quiseres e serve."]},
+{id:24,name:"Grão com espinafres",emoji:"🌿",category:"Vegetariano",price:1.50,time:20,difficulty:"Fácil",servings:2,description:"Grão-de-bico salteado com espinafres.",ingredients:["1 lata de grão-de-bico","150 g de espinafres","2 dentes de alho","Azeite e pimenta"],steps:["Pica o alho e aquece-o no azeite.","Junta o grão escorrido e salteia.","Adiciona os espinafres e cozinha até murcharem.","Tempera e serve quente."]},
+{id:25,name:"Ovos mexidos com tomate",emoji:"🍅",category:"Jantar",price:1.10,time:12,difficulty:"Fácil",servings:1,description:"Ovos mexidos com tomate fresco.",ingredients:["2 ovos","1 tomate","Azeite, sal e pimenta"],steps:["Corta o tomate em cubos.","Cozinha-o alguns minutos com azeite.","Bate os ovos e junta-os à frigideira.","Mexe e cozinha completamente."]},
+{id:26,name:"Salada de batata e ovo",emoji:"🥔",category:"Almoço",price:1.40,time:25,difficulty:"Fácil",servings:2,description:"Batata e ovo cozidos com molho de iogurte.",ingredients:["300 g de batatas","2 ovos","2 colheres de sopa de iogurte","Limão e salsa"],steps:["Coze as batatas até ficarem macias.","Coze os ovos até ficarem firmes.","Deixa arrefecer um pouco e corta tudo.","Mistura o iogurte com limão e salsa e envolve."]},
+{id:27,name:"Bolachas de aveia e banana",emoji:"🍪",category:"Sobremesa",price:0.70,time:20,difficulty:"Fácil",servings:2,description:"Bolachas caseiras com banana e aveia.",ingredients:["2 bananas maduras","100 g de aveia","Canela opcional"],steps:["Aquece o forno a 180 °C.","Esmaga as bananas e mistura com a aveia.","Forma pequenas bolachas num tabuleiro forrado.","Assa 12–15 minutos e deixa arrefecer."]},
+{id:28,name:"Massa com alho e azeite",emoji:"🧄",category:"Almoço",price:0.90,time:15,difficulty:"Fácil",servings:2,description:"Massa aromática com alho e salsa.",ingredients:["180 g de massa","2 dentes de alho","2 colheres de sopa de azeite","Salsa"],steps:["Coze a massa e reserva um pouco da água.","Pica o alho e aquece-o suavemente no azeite.","Junta a massa e um pouco da água reservada.","Envolve com salsa e serve."]},
+{id:29,name:"Sopa de feijão-verde",emoji:"🥬",category:"Jantar",price:1.00,time:35,difficulty:"Fácil",servings:4,description:"Sopa de legumes com feijão-verde.",ingredients:["200 g de feijão-verde","2 batatas","2 cenouras","1 cebola","Azeite e sal"],steps:["Lava e corta os legumes.","Coze a cebola, a batata e a cenoura.","Tritura até obter um creme.","Junta o feijão-verde cortado e cozinha até ficar tenro."]},
+{id:30,name:"Iogurte com maçã e canela",emoji:"🍏",category:"Lanche",price:0.70,time:5,difficulty:"Fácil",servings:1,description:"Lanche rápido com iogurte e maçã.",ingredients:["1 iogurte natural","1 maçã","Canela","1 colher de sopa de aveia opcional"],steps:["Lava e corta a maçã.","Coloca o iogurte numa taça.","Adiciona a maçã, a canela e a aveia se desejares."]}
+];
+
+const $ = id => document.getElementById(id);
+let user = null;
+let favorites = new Set();
+let showFavorites = false;
+let authBusy = false;
+
+function message(text){
+  $("authMessage").textContent = text;
+}
+function setBusy(busy){
+  authBusy = busy;
+  $("authForm").querySelectorAll("button").forEach(b=>b.disabled=busy);
+}
+function updateAccount(){
+  $("accountStatus").textContent = user ? `Ligado: ${user.email}` : "Sessão não iniciada";
+  $("accountButton").textContent = user ? "Conta" : "Entrar / Criar conta";
+  $("logoutButton").hidden = !user;
+}
+async function loadFavorites(){
+  favorites = new Set();
+  if(user){
+    const {data,error} = await db.from("favorites")
+      .select("recipe_id").eq("user_id",user.id);
+    if(error){
+      console.error(error);
+      message("Não foi possível carregar os favoritos. Confirma se executaste o SQL.");
+    }else{
+      favorites = new Set((data||[]).map(row=>Number(row.recipe_id)));
+    }
+  }
+  render();
+}
+async function syncAuth(session){
+  user = session?.user || null;
+  updateAccount();
+  await loadFavorites();
+}
+function visibleRecipes(){
+  const q = $("search").value.trim().toLocaleLowerCase("pt-PT");
+  const cat = $("category").value;
+  const max = Number($("budget").value);
+  let result = recipes.filter(r=>{
+    const all = [r.name,r.category,r.description,...r.ingredients]
+      .join(" ").toLocaleLowerCase("pt-PT");
+    return all.includes(q) && (!cat || r.category===cat) &&
+      r.price<=max && (!showFavorites || favorites.has(r.id));
+  });
+  if($("sort").value==="price") result.sort((a,b)=>a.price-b.price);
+  if($("sort").value==="time") result.sort((a,b)=>a.time-b.time);
+  if($("sort").value==="name") result.sort((a,b)=>a.name.localeCompare(b.name,"pt-PT"));
+  return result;
+}
+function render(){
+  const list = visibleRecipes();
+  $("count").textContent = `${list.length} encontradas · ${recipes.length} receitas-base`;
+  $("favoritesButton").textContent = showFavorites ? "← Todas as receitas" : `♡ Favoritos (${favorites.size})`;
+  if(!list.length){
+    $("recipes").innerHTML='<div class="empty"><h3>Não encontrámos receitas.</h3><p>Experimenta outros filtros ou guarda receitas nos favoritos.</p></div>';
+    return;
+  }
+  $("recipes").innerHTML=list.map(r=>`
+    <article class="recipe">
+      <div class="cardtop">
+        <span class="emoji">${r.emoji}</span><span class="tag">${escapeHTML(r.category)}</span>
+        <button class="heart ${favorites.has(r.id)?"active":""}" data-fav="${r.id}" aria-pressed="${favorites.has(r.id)}" aria-label="Alternar favorito">${favorites.has(r.id)?"♥":"♡"}</button>
+      </div>
+      <div class="cardbody">
+        <h3>${escapeHTML(r.name)}</h3><p>${escapeHTML(r.description)}</p>
+        <div class="meta"><span>⏱ ${r.time} min</span><span>👨‍🍳 ${escapeHTML(r.difficulty)}</span><span>🍽 ${r.servings} dose(s)</span></div>
+        <div class="bottom"><span class="price">≈ ${r.price.toFixed(2).replace(".",",")} €/pessoa</span><button class="btn secondary" data-open="${r.id}">Ver receita ↗</button></div>
+      </div>
+    </article>`).join("");
+}
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+async function toggleFavorite(id){
+  if(!user){
+    $("authBox").classList.add("open");
+    message("Inicia sessão ou cria uma conta para guardar os favoritos online.");
+    $("authBox").scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  const wasFavorite = favorites.has(id);
+  // Atualização otimista da interface.
+  wasFavorite ? favorites.delete(id) : favorites.add(id);
+  render();
+  const result = wasFavorite
+    ? await db.from("favorites").delete().eq("user_id",user.id).eq("recipe_id",id)
+    : await db.from("favorites").insert({user_id:user.id,recipe_id:id});
+  if(result.error){
+    console.error(result.error);
+    wasFavorite ? favorites.add(id) : favorites.delete(id);
+    render();
+    message("Não foi possível guardar o favorito. Confirma as políticas RLS e a ligação.");
+  }
+}
+function openRecipe(id){
+  const r=recipes.find(x=>x.id===Number(id));
+  if(!r)return;
+  $("modalEmoji").textContent=r.emoji;
+  $("modalTitle").textContent=r.name;
+  $("modalMeta").textContent=`${r.time} min · ${r.difficulty} · ${r.servings} dose(s) · ≈ ${r.price.toFixed(2).replace(".",",")} €/pessoa`;
+  $("modalDescription").textContent=r.description;
+  $("ingredients").replaceChildren(...r.ingredients.map(x=>{const li=document.createElement("li");li.textContent=x;return li;}));
+  $("steps").replaceChildren(...r.steps.map(x=>{const li=document.createElement("li");li.textContent=x;return li;}));
+  $("overlay").classList.add("open");
+  $("closeModal").focus();
+}
+function closeRecipe(){$("overlay").classList.remove("open");}
+
+$("recipes").addEventListener("click",e=>{
+  const fav=e.target.closest("[data-fav]");
+  const open=e.target.closest("[data-open]");
+  if(fav)toggleFavorite(Number(fav.dataset.fav));
+  if(open)openRecipe(Number(open.dataset.open));
+});
+$("favoritesButton").addEventListener("click",()=>{showFavorites=!showFavorites;render();});
+["search","category","budget","sort"].forEach(id=>$(id).addEventListener(id==="search"?"input":"change",render));
+$("searchButton").addEventListener("click",render);
+$("accountButton").addEventListener("click",()=>{
+  $("authBox").classList.toggle("open");
+  if(user)message(`Sessão iniciada com ${user.email}.`);
+  $("authBox").scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+$("closeModal").addEventListener("click",closeRecipe);
+$("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeRecipe();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeRecipe();});
+
+$("authForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(authBusy)return;
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  setBusy(true);message("A entrar...");
+  try{
+    const {data,error}=await db.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    await syncAuth(data.session);
+    message("Sessão iniciada com sucesso!");
+    $("authBox").classList.remove("open");
+  }catch(err){
+    message("Não foi possível iniciar sessão: "+err.message);
+  }finally{setBusy(false);}
+});
+$("signupButton").addEventListener("click",async()=>{
+  if(authBusy)return;
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  if(!email||password.length<6){message("Indica um email válido e uma palavra-passe com pelo menos 6 caracteres.");return;}
+  setBusy(true);message("A criar conta...");
+  try{
+    const {data,error}=await db.auth.signUp({email,password});
+    if(error)throw error;
+    if(data.session){
+      await syncAuth(data.session);
+      message("Conta criada e sessão iniciada!");
+      $("authBox").classList.remove("open");
+    }else{
+      message("Registo iniciado. Verifica o teu email para confirmar a conta antes de entrares.");
+    }
+  }catch(err){
+    message("Não foi possível criar a conta: "+err.message);
+  }finally{setBusy(false);}
+});
+$("logoutButton").addEventListener("click",async()=>{
+  const {error}=await db.auth.signOut();
+  if(error){message("Erro ao terminar sessão: "+error.message);return;}
+  await syncAuth(null);
+  message("Sessão terminada.");
+});
+async function start(){
+  const {data,error}=await db.auth.getSession();
+  if(error)console.error(error);
+  await syncAuth(data?.session||null);
+  db.auth.onAuthStateChange((_event,session)=>{
+    // Evita operações demoradas dentro do callback de autenticação.
+    setTimeout(()=>syncAuth(session),0);
+  });
+}
+start();
+</script>
+</body>
+</html>
